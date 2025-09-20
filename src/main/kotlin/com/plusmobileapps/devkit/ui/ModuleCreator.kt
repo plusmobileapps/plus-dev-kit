@@ -49,40 +49,45 @@ class ModuleCreator(
     private fun createModuleDirectory(parent: VirtualFile, moduleName: String) {
         val moduleDir = parent.createChildDirectory(this, moduleName)
 
-        // Create standard Android/Java directory structure
+        // Create multiplatform source directory structure
         val srcDir = moduleDir.createChildDirectory(this, "src")
-        val mainDir = srcDir.createChildDirectory(this, "main")
+        val commonMainDir = srcDir.createChildDirectory(this, "commonMain")
+        val kotlinDir = commonMainDir.createChildDirectory(this, "kotlin")
+        createNamespaceDirectories(kotlinDir, namespace)
 
-        // Create Java/Kotlin source directories with namespace
-        val javaDir = mainDir.createChildDirectory(this, "java")
-        createNamespaceDirectories(javaDir, namespace)
-
-        // Create Android resources directory if needed
-        mainDir.createChildDirectory(this, "res")
-
-        // Create basic Android module files like AndroidManifest.xml
-        if (moduleName != TESTING_MODULE_NAME) {
-            val manifestContent = """
-                <?xml version="1.0" encoding="utf-8"?>
-                <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-                    package="$namespace.$directoryName.$moduleName">
-                </manifest>
-            """.trimIndent()
-
-            val manifestFile = mainDir.createChildData(this, "AndroidManifest.xml")
-            manifestFile.setBinaryContent(manifestContent.toByteArray())
-        }
-
-        // Create build.gradle file
-        val buildGradleContent = when (moduleName) {
-            PUBLIC_MODULE_NAME -> createPublicBuildGradle()
-            IMPL_MODULE_NAME -> createImplBuildGradle()
-            TESTING_MODULE_NAME -> createTestingBuildGradle()
-            else -> ""
-        }
-
+        // Create build.gradle.kts file for multiplatform
+        val buildGradleContent = createMultiplatformBuildGradle(moduleName)
         val buildGradleFile = moduleDir.createChildData(this, "build.gradle.kts")
         buildGradleFile.setBinaryContent(buildGradleContent.toByteArray())
+    }
+
+    private fun createMultiplatformBuildGradle(moduleName: String): String {
+        return """
+            plugins {
+                kotlin("multiplatform")
+            }
+            
+            kotlin {
+                jvm()
+                js(IR) {
+                    browser()
+                    nodejs()
+                }
+                // Add other targets as needed
+                sourceSets {
+                    val commonMain by getting {
+                        dependencies {
+                            // Common dependencies
+                        }
+                    }
+                    val commonTest by getting {
+                        dependencies {
+                            implementation(kotlin("test"))
+                        }
+                    }
+                }
+            }
+        """.trimIndent()
     }
 
     private fun createNamespaceDirectories(parent: VirtualFile, namespace: String) {
@@ -93,148 +98,6 @@ class ModuleCreator(
 
         // Also create directory with module name
         current.createChildDirectory(this, directoryName)
-    }
-
-    private fun createPublicBuildGradle(): String {
-        return """
-            plugins {
-                id("com.android.library")
-                id("org.jetbrains.kotlin.android")
-            }
-            
-            android {
-                namespace = "$namespace.$directoryName.${PUBLIC_MODULE_NAME}"
-                compileSdk = 34
-                
-                defaultConfig {
-                    minSdk = 24
-                    testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-                }
-                
-                buildTypes {
-                    release {
-                        isMinifyEnabled = false
-                        proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-                    }
-                }
-                
-                compileOptions {
-                    sourceCompatibility = JavaVersion.VERSION_17
-                    targetCompatibility = JavaVersion.VERSION_17
-                }
-                
-                kotlinOptions {
-                    jvmTarget = "17"
-                }
-            }
-            
-            dependencies {
-                implementation("androidx.core:core-ktx:1.12.0")
-                implementation("androidx.appcompat:appcompat:1.6.1")
-                implementation("com.google.android.material:material:1.11.0")
-                testImplementation("junit:junit:4.13.2")
-                androidTestImplementation("androidx.test.ext:junit:1.1.5")
-                androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
-            }
-        """.trimIndent()
-    }
-
-    private fun createImplBuildGradle(): String {
-        return """
-            plugins {
-                id("com.android.library")
-                id("org.jetbrains.kotlin.android")
-            }
-            
-            android {
-                namespace = "$namespace.$directoryName.${IMPL_MODULE_NAME}"
-                compileSdk = 34
-                
-                defaultConfig {
-                    minSdk = 24
-                    testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-                }
-                
-                buildTypes {
-                    release {
-                        isMinifyEnabled = false
-                        proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-                    }
-                }
-                
-                compileOptions {
-                    sourceCompatibility = JavaVersion.VERSION_17
-                    targetCompatibility = JavaVersion.VERSION_17
-                }
-                
-                kotlinOptions {
-                    jvmTarget = "17"
-                }
-            }
-            
-            dependencies {
-                implementation(project(":$directoryName:${PUBLIC_MODULE_NAME}"))
-                
-                implementation("androidx.core:core-ktx:1.12.0")
-                implementation("androidx.appcompat:appcompat:1.6.1")
-                implementation("com.google.android.material:material:1.11.0")
-                testImplementation("junit:junit:4.13.2")
-                androidTestImplementation("androidx.test.ext:junit:1.1.5")
-                androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
-            }
-        """.trimIndent()
-    }
-
-    private fun createTestingBuildGradle(): String {
-        return """
-            plugins {
-                id("com.android.library")
-                id("org.jetbrains.kotlin.android")
-            }
-            
-            android {
-                namespace = "$namespace.$directoryName.${TESTING_MODULE_NAME}"
-                compileSdk = 34
-                
-                defaultConfig {
-                    minSdk = 24
-                    testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-                }
-                
-                buildTypes {
-                    release {
-                        isMinifyEnabled = false
-                        proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-                    }
-                }
-                
-                compileOptions {
-                    sourceCompatibility = JavaVersion.VERSION_17
-                    targetCompatibility = JavaVersion.VERSION_17
-                }
-                
-                kotlinOptions {
-                    jvmTarget = "17"
-                }
-            }
-            
-            dependencies {
-                implementation(project(":$directoryName:${PUBLIC_MODULE_NAME}"))
-                implementation(project(":$directoryName:${IMPL_MODULE_NAME}"))
-                
-                implementation("androidx.core:core-ktx:1.12.0")
-                implementation("androidx.appcompat:appcompat:1.6.1")
-                implementation("com.google.android.material:material:1.11.0")
-                testImplementation("junit:junit:4.13.2")
-                androidTestImplementation("androidx.test.ext:junit:1.1.5")
-                androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
-                
-                // Testing dependencies
-                testImplementation("org.mockito:mockito-core:5.7.0")
-                testImplementation("org.mockito.kotlin:mockito-kotlin:5.2.1")
-                testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
-            }
-        """.trimIndent()
     }
 
     private fun showNotification(content: String, type: NotificationType) {
