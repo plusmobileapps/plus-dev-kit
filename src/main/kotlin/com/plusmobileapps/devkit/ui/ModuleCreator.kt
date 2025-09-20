@@ -14,7 +14,10 @@ class ModuleCreator(
     private val directoryName: String,
     private val createPublic: Boolean,
     private val createImpl: Boolean,
-    private val createTesting: Boolean
+    private val createTesting: Boolean,
+    private val publicBuildGradleTemplate: String? = null,
+    private val implBuildGradleTemplate: String? = null,
+    private val testingBuildGradleTemplate: String? = null
 ) {
     companion object {
         private const val PUBLIC_MODULE_NAME = "public"
@@ -65,13 +68,19 @@ class ModuleCreator(
         val kotlinDir = commonMainDir.createChildDirectory(this, "kotlin")
         createNamespaceDirectories(kotlinDir, namespace)
 
-        // Create build.gradle.kts file for multiplatform
-        val buildGradleContent = createMultiplatformBuildGradle(moduleName)
+        // Create build.gradle.kts file with custom template
+        val buildGradleContent = when (moduleName) {
+            PUBLIC_MODULE_NAME -> publicBuildGradleTemplate ?: getDefaultPublicBuildGradle()
+            IMPL_MODULE_NAME -> implBuildGradleTemplate ?: getDefaultImplBuildGradle()
+            TESTING_MODULE_NAME -> testingBuildGradleTemplate ?: getDefaultTestingBuildGradle()
+            else -> getDefaultPublicBuildGradle()
+        }
+
         val buildGradleFile = moduleDir.createChildData(this, "build.gradle.kts")
         buildGradleFile.setBinaryContent(buildGradleContent.toByteArray())
     }
 
-    private fun createMultiplatformBuildGradle(moduleName: String): String {
+    private fun getDefaultPublicBuildGradle(): String {
         return """
             plugins {
                 kotlin("multiplatform")
@@ -83,11 +92,73 @@ class ModuleCreator(
                     browser()
                     nodejs()
                 }
-                // Add other targets as needed
+                
                 sourceSets {
                     val commonMain by getting {
                         dependencies {
-                            // Common dependencies
+                            // Public module dependencies
+                        }
+                    }
+                    val commonTest by getting {
+                        dependencies {
+                            implementation(kotlin("test"))
+                        }
+                    }
+                }
+            }
+        """.trimIndent()
+    }
+
+    private fun getDefaultImplBuildGradle(): String {
+        return """
+            plugins {
+                kotlin("multiplatform")
+            }
+            
+            kotlin {
+                jvm()
+                js(IR) {
+                    browser()
+                    nodejs()
+                }
+                
+                sourceSets {
+                    val commonMain by getting {
+                        dependencies {
+                            implementation(project(":shared:$directoryName:public"))
+                            // Implementation module dependencies
+                        }
+                    }
+                    val commonTest by getting {
+                        dependencies {
+                            implementation(kotlin("test"))
+                        }
+                    }
+                }
+            }
+        """.trimIndent()
+    }
+
+    private fun getDefaultTestingBuildGradle(): String {
+        return """
+            plugins {
+                kotlin("multiplatform")
+            }
+            
+            kotlin {
+                jvm()
+                js(IR) {
+                    browser()
+                    nodejs()
+                }
+                
+                sourceSets {
+                    val commonMain by getting {
+                        dependencies {
+                            implementation(project(":shared:$directoryName:public"))
+                            implementation(project(":shared:$directoryName:impl"))
+                            // Testing module dependencies
+                            implementation(kotlin("test"))
                         }
                     }
                     val commonTest by getting {
