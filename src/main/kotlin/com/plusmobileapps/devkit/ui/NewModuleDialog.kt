@@ -203,7 +203,8 @@ class NewModuleDialog(
             return
         }
 
-        val namespace = packageName
+        // Use packageName.directoryName as namespace to create correct directory structure
+        val namespace = "$packageName.$directoryName"
 
         val moduleCreator = ModuleCreator(
             project = project,
