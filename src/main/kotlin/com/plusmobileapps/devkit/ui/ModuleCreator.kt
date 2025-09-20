@@ -95,9 +95,7 @@ class ModuleCreator(
         namespace.split('.').forEach { part ->
             current = current.createChildDirectory(this, part)
         }
-
-        // Also create directory with module name
-        current.createChildDirectory(this, directoryName)
+        // Removed the extra directoryName directory creation
     }
 
     private fun showNotification(content: String, type: NotificationType) {

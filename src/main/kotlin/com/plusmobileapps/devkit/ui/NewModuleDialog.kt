@@ -1,5 +1,6 @@
 package com.plusmobileapps.devkit.ui
 
+import com.intellij.ide.util.PropertiesComponent
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.DialogWrapper
 import com.intellij.openapi.ui.ValidationInfo
@@ -20,9 +21,14 @@ import javax.swing.border.TitledBorder
 class NewModuleDialog(
     private val project: Project,
     private val parentDirectory: VirtualFile
-) : DialogWrapper(project) {
+) : DialogWrapper(true) {
 
-    private val namespaceField = JBTextField()
+    companion object {
+        private const val PACKAGE_NAME_KEY = "plusdevkit.packageName"
+        private const val DIRECTORY_NAME_KEY = "plusdevkit.directoryName"
+    }
+
+    private val packageNameField = JBTextField()
     private val directoryNameField = JBTextField()
 
     private val publicModuleCheckBox = JBCheckBox("Public", true)
@@ -31,6 +37,7 @@ class NewModuleDialog(
 
     init {
         title = "Create New Module"
+        loadPersistedValues()
         init()
     }
 
@@ -59,7 +66,7 @@ class NewModuleDialog(
 
         // Create text fields panel (right side)
         val textFieldsPanel = FormBuilder.createFormBuilder()
-            .addLabeledComponent("Namespace:", namespaceField)
+            .addLabeledComponent("Package Name:", packageNameField)
             .addLabeledComponent("Directory name:", directoryNameField)
             .panel
 
@@ -80,13 +87,30 @@ class NewModuleDialog(
         return mainPanel
     }
 
+    private fun loadPersistedValues() {
+        val properties = PropertiesComponent.getInstance()
+        packageNameField.text = properties.getValue(PACKAGE_NAME_KEY, "com.example")
+        directoryNameField.text = properties.getValue(DIRECTORY_NAME_KEY, "")
+    }
+
+    private fun savePersistedValues() {
+        val properties = PropertiesComponent.getInstance()
+        properties.setValue(PACKAGE_NAME_KEY, packageNameField.text)
+        properties.setValue(DIRECTORY_NAME_KEY, directoryNameField.text)
+    }
+
+    override fun doOKAction() {
+        savePersistedValues()
+        super.doOKAction()
+    }
+
     override fun doValidate(): ValidationInfo? {
         if (directoryNameField.text.isNullOrBlank()) {
             return ValidationInfo("Directory name is required", directoryNameField)
         }
 
-        if (namespaceField.text.isNullOrBlank()) {
-            return ValidationInfo("Namespace is required", namespaceField)
+        if (packageNameField.text.isNullOrBlank()) {
+            return ValidationInfo("Package name is required", packageNameField)
         }
 
         if (!publicModuleCheckBox.isSelected && !implModuleCheckBox.isSelected && !testingModuleCheckBox.isSelected) {
@@ -97,8 +121,15 @@ class NewModuleDialog(
     }
 
     fun createModule() {
-        val namespace = namespaceField.text
-        val directoryName = directoryNameField.text
+        val packageName = packageNameField.text.trim()
+        val directoryName = directoryNameField.text.trim()
+
+        if (packageName.isEmpty() || directoryName.isEmpty()) {
+            return
+        }
+
+        // Use just the packageName as namespace, not packageName.directoryName
+        val namespace = packageName
 
         val moduleCreator = ModuleCreator(
             project = project,
