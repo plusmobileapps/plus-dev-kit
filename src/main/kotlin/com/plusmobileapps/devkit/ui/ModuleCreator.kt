@@ -28,15 +28,25 @@ class ModuleCreator(
                 // Create main directory
                 val mainDir = parentDirectory.createChildDirectory(this, directoryName)
 
+                val createdModules = mutableListOf<String>()
+
                 // Create modules based on selected options
                 if (createPublic) {
                     createModuleDirectory(mainDir, PUBLIC_MODULE_NAME)
+                    createdModules.add(":$directoryName:$PUBLIC_MODULE_NAME")
                 }
                 if (createImpl) {
                     createModuleDirectory(mainDir, IMPL_MODULE_NAME)
+                    createdModules.add(":$directoryName:$IMPL_MODULE_NAME")
                 }
                 if (createTesting) {
                     createModuleDirectory(mainDir, TESTING_MODULE_NAME)
+                    createdModules.add(":$directoryName:$TESTING_MODULE_NAME")
+                }
+
+                // Add modules to settings.gradle.kts
+                if (createdModules.isNotEmpty()) {
+                    addModulesToSettings(createdModules)
                 }
             }
 
@@ -104,6 +114,63 @@ class ModuleCreator(
                 .getNotificationGroup("Plus Dev Kit Notifications")
                 .createNotification(content, type)
                 .notify(project)
+        }
+    }
+
+    private fun addModulesToSettings(moduleNames: List<String>) {
+        try {
+            // Find settings.gradle.kts in the project root
+            val projectBaseDir = project.baseDir ?: return
+            val settingsFile = projectBaseDir.findChild("settings.gradle.kts") ?: return
+
+            // Calculate the relative path from project root to the parent directory
+            val relativePath = projectBaseDir.toNioPath().relativize(parentDirectory.toNioPath())
+            val pathPrefix = if (relativePath.toString().isEmpty()) "" else ":${relativePath.toString().replace("/", ":")}"
+
+            val currentContent = String(settingsFile.contentsToByteArray())
+
+            // Create new module includes with correct path
+            val newModules = moduleNames.map { moduleName ->
+                "$pathPrefix$moduleName"
+            }
+
+            // Parse existing includes and add new ones
+            val allIncludes = mutableSetOf<String>()
+
+            // Extract existing includes from current content
+            currentContent.lines().forEach { line ->
+                val trimmed = line.trim()
+                if (trimmed.startsWith("include(") && trimmed.contains("\"")) {
+                    val match = Regex("include\\(\"([^\"]+)\"\\)").find(trimmed)
+                    match?.groupValues?.get(1)?.let { allIncludes.add(it) }
+                }
+            }
+
+            // Add new modules
+            allIncludes.addAll(newModules)
+
+            // Remove include lines from current content
+            val contentWithoutIncludes = currentContent.lines()
+                .filterNot { line ->
+                    val trimmed = line.trim()
+                    trimmed.startsWith("include(") && trimmed.contains("\"")
+                }
+                .joinToString("\n")
+
+            // Sort includes and create final content
+            val sortedIncludes = allIncludes.sorted().joinToString("\n") { "include(\"$it\")" }
+
+            val updatedContent = if (contentWithoutIncludes.isBlank()) {
+                sortedIncludes
+            } else {
+                "$contentWithoutIncludes\n\n$sortedIncludes"
+            }
+
+            settingsFile.setBinaryContent(updatedContent.toByteArray())
+
+            showNotification("Added modules to settings.gradle.kts", NotificationType.INFORMATION)
+        } catch (e: Exception) {
+            showNotification("Warning: Could not update settings.gradle.kts: ${e.message}", NotificationType.WARNING)
         }
     }
 }
