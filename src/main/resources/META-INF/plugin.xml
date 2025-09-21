@@ -5,16 +5,21 @@
 
     <!-- Public plugin name should be written in Title Case.
          Guidelines: https://plugins.jetbrains.com/docs/marketplace/best-practices-for-listing.html#plugin-name -->
-    <name>Devkit</name>
+    <name>Plus Mobile Apps Devkit</name>
 
     <!-- A displayed Vendor name or Organization ID displayed on the Plugins Page. -->
-    <vendor url="https://www.yourcompany.com">YourCompany</vendor>
+    <vendor url="https://www.plusmobileapps.com">Plus Mobile Apps</vendor>
 
     <!-- Description of the plugin displayed on the Plugin Page and IDE Plugin Manager.
          Guidelines: https://plugins.jetbrains.com/docs/marketplace/best-practices-for-listing.html#plugin-description -->
     <description><![CDATA[
-        Enter short description for your plugin here.<br>
-        <em>most HTML tags may be used</em>
+        Developer toolkit to help quickly spin up new modules with the right structure.
+        Features:
+        <ul>
+            <li>Create new Android modules with a single click</li>
+            <li>Support for public, implementation, and testing modules</li>
+            <li>Automatically sets up proper Android project structure</li>
+        </ul>
     ]]></description>
 
     <!-- Product and plugin compatibility requirements.
@@ -24,6 +29,15 @@
     <!-- Extension points defined by the plugin.
          Read more: https://plugins.jetbrains.com/docs/intellij/plugin-extension-points.html -->
     <extensions defaultExtensionNs="com.intellij">
-
+        <notificationGroup id="Plus Dev Kit Notifications" displayType="BALLOON" />
     </extensions>
+
+    <actions>
+        <action id="com.plusmobileapps.devkit.actions.NewFeatureModuleAction"
+                class="com.plusmobileapps.devkit.actions.NewFeatureModuleAction"
+                text="New Module"
+                description="Create a new module with proper structure">
+            <add-to-group group-id="ProjectViewPopupMenu" anchor="first"/>
+        </action>
+    </actions>
 </idea-plugin>
