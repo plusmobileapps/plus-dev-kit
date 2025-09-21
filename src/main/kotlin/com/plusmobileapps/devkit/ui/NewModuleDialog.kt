@@ -206,17 +206,37 @@ class NewModuleDialog(
         // Use packageName.directoryName as namespace to create correct directory structure
         val namespace = "$packageName.$directoryName"
 
-        // Replace $directoryName placeholder with actual directory name in templates
+        // Calculate project directory path relative to project root
+        val projectBasePath = project.basePath
+        val parentPath = parentDirectory.path
+        val projectDirectory = if (projectBasePath != null && parentPath.startsWith(projectBasePath)) {
+            // Get relative path from project root, ensuring it starts with ":"
+            val relativePath = parentPath.substring(projectBasePath.length)
+                .replace("/", ":")
+                .let { if (it.startsWith(":")) it else ":$it" }
+            relativePath
+        } else {
+            // Fallback if we can't determine relative path
+            ":${parentDirectory.name}"
+        }
+
+        // Replace placeholders in templates with actual values
         val processedPublicTemplate = if (publicModuleCheckBox.isSelected) {
-            publicBuildGradleArea.text.replace("\$directoryName", directoryName)
+            publicBuildGradleArea.text
+                .replace("\$directoryName", directoryName)
+                .replace("\$projectDirectory", projectDirectory)
         } else null
 
         val processedImplTemplate = if (implModuleCheckBox.isSelected) {
-            implBuildGradleArea.text.replace("\$directoryName", directoryName)
+            implBuildGradleArea.text
+                .replace("\$directoryName", directoryName)
+                .replace("\$projectDirectory", projectDirectory)
         } else null
 
         val processedTestingTemplate = if (testingModuleCheckBox.isSelected) {
-            testingBuildGradleArea.text.replace("\$directoryName", directoryName)
+            testingBuildGradleArea.text
+                .replace("\$directoryName", directoryName)
+                .replace("\$projectDirectory", projectDirectory)
         } else null
 
         val moduleCreator = ModuleCreator(
@@ -280,7 +300,7 @@ class NewModuleDialog(
                 sourceSets {
                     val commonMain by getting {
                         dependencies {
-                            implementation(project(":shared:${'$'}directoryName:public"))
+                            implementation(project("${'$'}projectDirectory:${'$'}directoryName:public"))
                             // Implementation module dependencies
                         }
                     }
@@ -310,8 +330,8 @@ class NewModuleDialog(
                 sourceSets {
                     val commonMain by getting {
                         dependencies {
-                            implementation(project(":shared:${'$'}directoryName:public"))
-                            implementation(project(":shared:${'$'}directoryName:impl"))
+                            implementation(project("${'$'}projectDirectory:${'$'}directoryName:public"))
+                            implementation(project("${'$'}projectDirectory:${'$'}directoryName:impl"))
                             // Testing module dependencies
                             implementation(kotlin("test"))
                         }
