@@ -206,6 +206,19 @@ class NewModuleDialog(
         // Use packageName.directoryName as namespace to create correct directory structure
         val namespace = "$packageName.$directoryName"
 
+        // Replace $directoryName placeholder with actual directory name in templates
+        val processedPublicTemplate = if (publicModuleCheckBox.isSelected) {
+            publicBuildGradleArea.text.replace("\$directoryName", directoryName)
+        } else null
+
+        val processedImplTemplate = if (implModuleCheckBox.isSelected) {
+            implBuildGradleArea.text.replace("\$directoryName", directoryName)
+        } else null
+
+        val processedTestingTemplate = if (testingModuleCheckBox.isSelected) {
+            testingBuildGradleArea.text.replace("\$directoryName", directoryName)
+        } else null
+
         val moduleCreator = ModuleCreator(
             project = project,
             parentDirectory = parentDirectory,
@@ -214,9 +227,9 @@ class NewModuleDialog(
             createPublic = publicModuleCheckBox.isSelected,
             createImpl = implModuleCheckBox.isSelected,
             createTesting = testingModuleCheckBox.isSelected,
-            publicBuildGradleTemplate = if (publicModuleCheckBox.isSelected) publicBuildGradleArea.text else null,
-            implBuildGradleTemplate = if (implModuleCheckBox.isSelected) implBuildGradleArea.text else null,
-            testingBuildGradleTemplate = if (testingModuleCheckBox.isSelected) testingBuildGradleArea.text else null
+            publicBuildGradleTemplate = processedPublicTemplate,
+            implBuildGradleTemplate = processedImplTemplate,
+            testingBuildGradleTemplate = processedTestingTemplate
         )
 
         moduleCreator.createModules()
@@ -267,7 +280,7 @@ class NewModuleDialog(
                 sourceSets {
                     val commonMain by getting {
                         dependencies {
-                            implementation(project(":shared:${'$'}{project.parent?.name}:public"))
+                            implementation(project(":shared:${'$'}directoryName:public"))
                             // Implementation module dependencies
                         }
                     }
@@ -297,8 +310,8 @@ class NewModuleDialog(
                 sourceSets {
                     val commonMain by getting {
                         dependencies {
-                            implementation(project(":shared:${'$'}{project.parent?.name}:public"))
-                            implementation(project(":shared:${'$'}{project.parent?.name}:impl"))
+                            implementation(project(":shared:${'$'}directoryName:public"))
+                            implementation(project(":shared:${'$'}directoryName:impl"))
                             // Testing module dependencies
                             implementation(kotlin("test"))
                         }
