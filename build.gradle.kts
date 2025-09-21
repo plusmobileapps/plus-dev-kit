@@ -36,6 +36,9 @@ intellijPlatform {
             Initial version
         """.trimIndent()
     }
+    publishing {
+        token = providers.gradleProperty("intellijPlatformPublishingToken")
+    }
 }
 
 tasks {
