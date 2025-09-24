@@ -1,4 +1,4 @@
-package com.plusmobileapps.devkit.ui
+package com.plusmobileapps.devkit.actions
 
 import com.intellij.notification.NotificationGroupManager
 import com.intellij.notification.NotificationType
