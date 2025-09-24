@@ -15,12 +15,7 @@ import java.awt.BorderLayout
 import java.awt.Dimension
 import java.awt.event.KeyAdapter
 import java.awt.event.KeyEvent
-import javax.swing.BorderFactory
-import javax.swing.Box
-import javax.swing.BoxLayout
-import javax.swing.JComponent
-import javax.swing.JPanel
-import javax.swing.JScrollPane
+import javax.swing.*
 
 class NewModuleDialog(
     private val project: Project,
@@ -123,9 +118,7 @@ class NewModuleDialog(
 
             namespaceField.text = if (packageName.isNotEmpty() && directoryName.isNotEmpty()) {
                 "$packageName.$directoryName"
-            } else if (packageName.isNotEmpty()) {
-                packageName
-            } else {
+            } else packageName.ifEmpty {
                 ""
             }
         }

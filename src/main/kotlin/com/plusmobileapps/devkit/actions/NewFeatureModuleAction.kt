@@ -1,11 +1,11 @@
 package com.plusmobileapps.devkit.actions
 
+import com.intellij.icons.AllIcons
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
-import com.intellij.icons.AllIcons
-import com.plusmobileapps.devkit.ui.NewModuleDialog
+import com.plusmobileapps.devkit.ui.NewModuleComposeDialog
 
 class NewFeatureModuleAction : AnAction("New Feature Module", "Create a new module", AllIcons.Actions.ModuleDirectory) {
 
@@ -13,7 +13,7 @@ class NewFeatureModuleAction : AnAction("New Feature Module", "Create a new modu
         val project = e.project ?: return
         val selectedFile = e.getData(CommonDataKeys.VIRTUAL_FILE) ?: return
 
-        val dialog = NewModuleDialog(project, selectedFile)
+        val dialog = NewModuleComposeDialog(project, selectedFile)
         if (dialog.showAndGet()) {
             // Dialog was confirmed, process the input
             dialog.createModule()
