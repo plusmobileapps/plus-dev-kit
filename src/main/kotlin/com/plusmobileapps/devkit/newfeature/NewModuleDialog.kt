@@ -1,4 +1,4 @@
-package com.plusmobileapps.devkit.ui
+package com.plusmobileapps.devkit.newfeature
 
 import com.intellij.ide.util.PropertiesComponent
 import com.intellij.openapi.project.Project
@@ -11,6 +11,9 @@ import com.intellij.ui.components.JBTextArea
 import com.intellij.ui.components.JBTextField
 import com.intellij.util.ui.FormBuilder
 import com.intellij.util.ui.JBUI
+import com.plusmobileapps.devkit.newfeature.BuildGradleDefaults.getDefaultImplBuildGradle
+import com.plusmobileapps.devkit.newfeature.BuildGradleDefaults.getDefaultPublicBuildGradle
+import com.plusmobileapps.devkit.newfeature.BuildGradleDefaults.getDefaultTestingBuildGradle
 import java.awt.BorderLayout
 import java.awt.Dimension
 import java.awt.event.KeyAdapter
@@ -55,27 +58,19 @@ class NewModuleDialog(
 
     override fun createCenterPanel(): JComponent {
         val mainPanel = JPanel(BorderLayout())
+        val topPanel: JPanel = createTopPanel()
+        val tabbedPane: JBTabbedPane = createTabbedPane()
 
+        // Assemble main panel
+        mainPanel.add(topPanel, BorderLayout.NORTH)
+        mainPanel.add(tabbedPane, BorderLayout.CENTER)
+        mainPanel.preferredSize = JBUI.size(700, 500)
+        return mainPanel
+    }
+
+    private fun createTopPanel(): JPanel = JPanel(BorderLayout()).apply {
         // Left side - Checkboxes with outlined box
-        val checkboxPanel = JPanel()
-        checkboxPanel.layout = BoxLayout(checkboxPanel, BoxLayout.Y_AXIS)
-        checkboxPanel.add(publicModuleCheckBox)
-        checkboxPanel.add(Box.createVerticalStrut(10))
-        checkboxPanel.add(implModuleCheckBox)
-        checkboxPanel.add(Box.createVerticalStrut(10))
-        checkboxPanel.add(testingModuleCheckBox)
-        checkboxPanel.add(Box.createVerticalGlue())
-
-        // Add outlined border around checkboxes
-        checkboxPanel.border = BorderFactory.createTitledBorder(
-            BorderFactory.createEtchedBorder(),
-            "Create Module Type"
-        )
-
-        // Set minimum width to prevent title ellipsization
-        val minWidth = 150
-        checkboxPanel.minimumSize = Dimension(minWidth, 0)
-        checkboxPanel.preferredSize = Dimension(minWidth, checkboxPanel.preferredSize.height)
+        val checkboxPanel: JPanel = createCheckboxPannel()
 
         // Right side - Text fields
         val fieldsPanel = FormBuilder.createFormBuilder()
@@ -85,35 +80,45 @@ class NewModuleDialog(
             .panel
 
         // Top panel with left and right sections
-        val topPanel = JPanel(BorderLayout())
-        topPanel.add(checkboxPanel, BorderLayout.WEST)
-        topPanel.add(fieldsPanel, BorderLayout.CENTER)
-
+        add(checkboxPanel, BorderLayout.WEST)
+        add(fieldsPanel, BorderLayout.CENTER)
         // Add some spacing
-        topPanel.border = BorderFactory.createEmptyBorder(10, 10, 10, 10)
+        border = BorderFactory.createEmptyBorder(10, 10, 10, 10)
+    }
 
-        // Tabs section for build.gradle.kts templates
-        val tabbedPane = JBTabbedPane()
-
+    private fun createTabbedPane(): JBTabbedPane = JBTabbedPane().apply {
         // Public module tab
         val publicScrollPane = JScrollPane(publicBuildGradleArea)
-        tabbedPane.addTab("Public Module", publicScrollPane)
+        addTab("Public Module", publicScrollPane)
 
         // Impl module tab
         val implScrollPane = JScrollPane(implBuildGradleArea)
-        tabbedPane.addTab("Impl Module", implScrollPane)
+        addTab("Impl Module", implScrollPane)
 
         // Testing module tab
         val testingScrollPane = JScrollPane(testingBuildGradleArea)
-        tabbedPane.addTab("Testing Module", testingScrollPane)
+        addTab("Testing Module", testingScrollPane)
+    }
 
-        // Assemble main panel
-        mainPanel.add(topPanel, BorderLayout.NORTH)
-        mainPanel.add(tabbedPane, BorderLayout.CENTER)
+    private fun createCheckboxPannel(): JPanel = JPanel().apply {
+        layout = BoxLayout(this, BoxLayout.Y_AXIS)
+        add(publicModuleCheckBox)
+        add(Box.createVerticalStrut(10))
+        add(implModuleCheckBox)
+        add(Box.createVerticalStrut(10))
+        add(testingModuleCheckBox)
+        add(Box.createVerticalGlue())
 
-        mainPanel.preferredSize = JBUI.size(700, 500)
+        // Add outlined border around checkboxes
+        border = BorderFactory.createTitledBorder(
+            BorderFactory.createEtchedBorder(),
+            "Create Module Type"
+        )
 
-        return mainPanel
+        // Set minimum width to prevent title ellipsization
+        val minWidth = 150
+        minimumSize = Dimension(minWidth, 0)
+        preferredSize = Dimension(minWidth, this.preferredSize.height)
     }
 
     private fun setupAutoFillNamespace() {
@@ -123,9 +128,7 @@ class NewModuleDialog(
 
             namespaceField.text = if (packageName.isNotEmpty() && directoryName.isNotEmpty()) {
                 "$packageName.$directoryName"
-            } else if (packageName.isNotEmpty()) {
-                packageName
-            } else {
+            } else packageName.ifEmpty {
                 ""
             }
         }
@@ -204,7 +207,7 @@ class NewModuleDialog(
         }
 
         // Use packageName.directoryName as namespace to create correct directory structure
-        val namespace = "$packageName.$directoryName"
+        val namespace = namespaceField.text
 
         // Calculate project directory path relative to project root
         val projectBasePath = project.basePath
@@ -225,18 +228,21 @@ class NewModuleDialog(
             publicBuildGradleArea.text
                 .replace("\$directoryName", directoryName)
                 .replace("\$projectDirectory", projectDirectory)
+                .replace("\$namespace", namespace)
         } else null
 
         val processedImplTemplate = if (implModuleCheckBox.isSelected) {
             implBuildGradleArea.text
                 .replace("\$directoryName", directoryName)
                 .replace("\$projectDirectory", projectDirectory)
+                .replace("\$namespace", namespace)
         } else null
 
         val processedTestingTemplate = if (testingModuleCheckBox.isSelected) {
             testingBuildGradleArea.text
                 .replace("\$directoryName", directoryName)
                 .replace("\$projectDirectory", projectDirectory)
+                .replace("\$namespace", namespace)
         } else null
 
         val moduleCreator = ModuleCreator(
@@ -253,96 +259,5 @@ class NewModuleDialog(
         )
 
         moduleCreator.createModules()
-    }
-
-    private fun getDefaultPublicBuildGradle(): String {
-        return """
-            plugins {
-                kotlin("multiplatform")
-            }
-            
-            kotlin {
-                jvm()
-                js(IR) {
-                    browser()
-                    nodejs()
-                }
-                
-                sourceSets {
-                    val commonMain by getting {
-                        dependencies {
-                            // Public module dependencies
-                        }
-                    }
-                    val commonTest by getting {
-                        dependencies {
-                            implementation(kotlin("test"))
-                        }
-                    }
-                }
-            }
-        """.trimIndent()
-    }
-
-    private fun getDefaultImplBuildGradle(): String {
-        return """
-            plugins {
-                kotlin("multiplatform")
-            }
-            
-            kotlin {
-                jvm()
-                js(IR) {
-                    browser()
-                    nodejs()
-                }
-                
-                sourceSets {
-                    val commonMain by getting {
-                        dependencies {
-                            implementation(project("${'$'}projectDirectory:${'$'}directoryName:public"))
-                            // Implementation module dependencies
-                        }
-                    }
-                    val commonTest by getting {
-                        dependencies {
-                            implementation(kotlin("test"))
-                        }
-                    }
-                }
-            }
-        """.trimIndent()
-    }
-
-    private fun getDefaultTestingBuildGradle(): String {
-        return """
-            plugins {
-                kotlin("multiplatform")
-            }
-            
-            kotlin {
-                jvm()
-                js(IR) {
-                    browser()
-                    nodejs()
-                }
-                
-                sourceSets {
-                    val commonMain by getting {
-                        dependencies {
-                            implementation(project("${'$'}projectDirectory:${'$'}directoryName:public"))
-                            implementation(project("${'$'}projectDirectory:${'$'}directoryName:impl"))
-                            // Testing module dependencies
-                            implementation(kotlin("test"))
-                        }
-                    }
-                    val commonTest by getting {
-                        dependencies {
-                            implementation(kotlin("test"))
-                        }
-                    }
-                }
-            }
-        """.trimIndent()
     }
 }

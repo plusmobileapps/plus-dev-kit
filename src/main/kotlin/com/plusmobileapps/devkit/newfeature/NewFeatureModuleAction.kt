@@ -1,11 +1,10 @@
-package com.plusmobileapps.devkit.actions
+package com.plusmobileapps.devkit.newfeature
 
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.icons.AllIcons
-import com.plusmobileapps.devkit.ui.NewModuleDialog
 
 class NewFeatureModuleAction : AnAction("New Feature Module", "Create a new module", AllIcons.Actions.ModuleDirectory) {
 
