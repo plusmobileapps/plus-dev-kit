@@ -53,6 +53,7 @@ class NewModuleDialog(
         title = "Create New Module"
         loadPersistedValues()
         setupAutoFillNamespace()
+        setupRealTimePersistence()
         init()
     }
 
@@ -175,6 +176,40 @@ class NewModuleDialog(
         properties.setValue(PUBLIC_BUILD_GRADLE_KEY, publicBuildGradleArea.text)
         properties.setValue(IMPL_BUILD_GRADLE_KEY, implBuildGradleArea.text)
         properties.setValue(TESTING_BUILD_GRADLE_KEY, testingBuildGradleArea.text)
+    }
+
+    private fun setupRealTimePersistence() {
+        // Save build.gradle templates in real-time as user edits them
+        val saveTemplates = {
+            val properties = PropertiesComponent.getInstance()
+            try {
+                properties.setValue(PUBLIC_BUILD_GRADLE_KEY, publicBuildGradleArea.text)
+                properties.setValue(IMPL_BUILD_GRADLE_KEY, implBuildGradleArea.text)
+                properties.setValue(TESTING_BUILD_GRADLE_KEY, testingBuildGradleArea.text)
+            } catch (e: Exception) {
+                // Handle potential storage limitations silently
+                // IntelliJ will log the error if needed
+            }
+        }
+
+        // Add document listeners to save templates as they're edited
+        publicBuildGradleArea.document.addDocumentListener(object : javax.swing.event.DocumentListener {
+            override fun insertUpdate(e: javax.swing.event.DocumentEvent?) = saveTemplates()
+            override fun removeUpdate(e: javax.swing.event.DocumentEvent?) = saveTemplates()
+            override fun changedUpdate(e: javax.swing.event.DocumentEvent?) = saveTemplates()
+        })
+
+        implBuildGradleArea.document.addDocumentListener(object : javax.swing.event.DocumentListener {
+            override fun insertUpdate(e: javax.swing.event.DocumentEvent?) = saveTemplates()
+            override fun removeUpdate(e: javax.swing.event.DocumentEvent?) = saveTemplates()
+            override fun changedUpdate(e: javax.swing.event.DocumentEvent?) = saveTemplates()
+        })
+
+        testingBuildGradleArea.document.addDocumentListener(object : javax.swing.event.DocumentListener {
+            override fun insertUpdate(e: javax.swing.event.DocumentEvent?) = saveTemplates()
+            override fun removeUpdate(e: javax.swing.event.DocumentEvent?) = saveTemplates()
+            override fun changedUpdate(e: javax.swing.event.DocumentEvent?) = saveTemplates()
+        })
     }
 
     override fun doOKAction() {
