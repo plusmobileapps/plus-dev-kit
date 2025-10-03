@@ -59,14 +59,63 @@ class NewModuleDialog(
 
     override fun createCenterPanel(): JComponent {
         val mainPanel = JPanel(BorderLayout())
+        val warningPanel = createWarningPanel()
         val topPanel: JPanel = createTopPanel()
         val tabbedPane: JBTabbedPane = createTabbedPane()
 
         // Assemble main panel
-        mainPanel.add(topPanel, BorderLayout.NORTH)
-        mainPanel.add(tabbedPane, BorderLayout.CENTER)
-        mainPanel.preferredSize = JBUI.size(700, 500)
+        if (warningPanel != null) {
+            mainPanel.add(warningPanel, BorderLayout.NORTH)
+            mainPanel.add(topPanel, BorderLayout.CENTER)
+            mainPanel.add(tabbedPane, BorderLayout.SOUTH)
+            // Increase height when warning panel is shown
+            mainPanel.preferredSize = JBUI.size(700, 600)
+        } else {
+            mainPanel.add(topPanel, BorderLayout.NORTH)
+            mainPanel.add(tabbedPane, BorderLayout.CENTER)
+            mainPanel.preferredSize = JBUI.size(700, 500)
+        }
         return mainPanel
+    }
+
+    private fun createWarningPanel(): JPanel? {
+        val projectBasePath = project.basePath ?: ""
+        val missingFiles = mutableListOf<String>()
+
+        // Check which devkit files are missing
+        val publicPath = "$projectBasePath/devkit/public.gradle.kts"
+        val implPath = "$projectBasePath/devkit/impl.gradle.kts"
+        val testingPath = "$projectBasePath/devkit/testing.gradle.kts"
+
+        if (readFileContent(publicPath) == null) missingFiles.add("devkit/public.gradle.kts")
+        if (readFileContent(implPath) == null) missingFiles.add("devkit/impl.gradle.kts")
+        if (readFileContent(testingPath) == null) missingFiles.add("devkit/testing.gradle.kts")
+
+        if (missingFiles.isEmpty()) return null
+
+        val warningPanel = JPanel(BorderLayout()).apply {
+            val warningText = if (missingFiles.size == 1) {
+                "⚠️ Warning: ${missingFiles[0]} not found - using default template"
+            } else {
+                "⚠️ Warning: Missing devkit template files (using defaults):\n• ${missingFiles.joinToString("\n• ")}"
+            }
+
+            val warningArea = JBTextArea(warningText).apply {
+                isEditable = false
+                background = this@apply.background
+                foreground = java.awt.Color.ORANGE.darker()
+                font = font.deriveFont(font.style or java.awt.Font.BOLD)
+                rows = if (missingFiles.size == 1) 1 else missingFiles.size + 1
+            }
+
+            add(warningArea, BorderLayout.CENTER)
+            border = BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(java.awt.Color.ORANGE, 1),
+                BorderFactory.createEmptyBorder(8, 8, 8, 8)
+            )
+        }
+
+        return warningPanel
     }
 
     private fun createTopPanel(): JPanel = JPanel(BorderLayout()).apply {
@@ -153,10 +202,41 @@ class NewModuleDialog(
         // Load package name (persisted)
         packageNameField.text = properties.getValue(PACKAGE_NAME_KEY, "com.example")
 
-        // Load build.gradle.kts templates (persisted)
-        publicBuildGradleArea.text = properties.getValue(PUBLIC_BUILD_GRADLE_KEY, getDefaultPublicBuildGradle())
-        implBuildGradleArea.text = properties.getValue(IMPL_BUILD_GRADLE_KEY, getDefaultImplBuildGradle())
-        testingBuildGradleArea.text = properties.getValue(TESTING_BUILD_GRADLE_KEY, getDefaultTestingBuildGradle())
+        // Load build.gradle.kts templates from devkit files or use defaults
+        val projectBasePath = project.basePath ?: ""
+
+        // Try to load public build gradle from devkit/public.gradle.kts
+        val publicGradlePath = "$projectBasePath/devkit/public.gradle.kts"
+        val publicContent = readFileContent(publicGradlePath)
+        publicBuildGradleArea.text = if (publicContent != null) {
+            // Use devkit file content if it exists
+            publicContent
+        } else {
+            // Fall back to persisted value or default
+            properties.getValue(PUBLIC_BUILD_GRADLE_KEY, getDefaultPublicBuildGradle())
+        }
+
+        // Try to load impl build gradle from devkit/impl.gradle.kts
+        val implGradlePath = "$projectBasePath/devkit/impl.gradle.kts"
+        val implContent = readFileContent(implGradlePath)
+        implBuildGradleArea.text = if (implContent != null) {
+            // Use devkit file content if it exists
+            implContent
+        } else {
+            // Fall back to persisted value or default
+            properties.getValue(IMPL_BUILD_GRADLE_KEY, getDefaultImplBuildGradle())
+        }
+
+        // Try to load testing build gradle from devkit/testing.gradle.kts
+        val testingGradlePath = "$projectBasePath/devkit/testing.gradle.kts"
+        val testingContent = readFileContent(testingGradlePath)
+        testingBuildGradleArea.text = if (testingContent != null) {
+            // Use devkit file content if it exists
+            testingContent
+        } else {
+            // Fall back to persisted value or default
+            properties.getValue(TESTING_BUILD_GRADLE_KEY, getDefaultTestingBuildGradle())
+        }
 
         // Directory name is not persisted - starts empty each time
         directoryNameField.text = ""
