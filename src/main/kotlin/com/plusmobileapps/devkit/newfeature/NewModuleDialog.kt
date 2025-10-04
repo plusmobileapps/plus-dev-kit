@@ -15,7 +15,9 @@ import com.plusmobileapps.devkit.newfeature.BuildGradleDefaults.getDefaultImplBu
 import com.plusmobileapps.devkit.newfeature.BuildGradleDefaults.getDefaultPublicBuildGradle
 import com.plusmobileapps.devkit.newfeature.BuildGradleDefaults.getDefaultTestingBuildGradle
 import java.awt.BorderLayout
+import java.awt.Color
 import java.awt.Dimension
+import java.awt.Font
 import java.awt.event.KeyAdapter
 import java.awt.event.KeyEvent
 import javax.swing.BorderFactory
@@ -24,6 +26,8 @@ import javax.swing.BoxLayout
 import javax.swing.JComponent
 import javax.swing.JPanel
 import javax.swing.JScrollPane
+import javax.swing.event.DocumentEvent
+import javax.swing.event.DocumentListener
 
 class NewModuleDialog(
     private val project: Project,
@@ -51,7 +55,7 @@ class NewModuleDialog(
 
     init {
         title = "Create New Module"
-        loadPersistedValues()
+        initialize()
         setupAutoFillNamespace()
         setupRealTimePersistence()
         init()
@@ -103,14 +107,14 @@ class NewModuleDialog(
             val warningArea = JBTextArea(warningText).apply {
                 isEditable = false
                 background = this@apply.background
-                foreground = java.awt.Color.ORANGE.darker()
-                font = font.deriveFont(font.style or java.awt.Font.BOLD)
+                foreground = Color.ORANGE.darker()
+                font = font.deriveFont(font.style or Font.BOLD)
                 rows = if (missingFiles.size == 1) 1 else missingFiles.size + 1
             }
 
             add(warningArea, BorderLayout.CENTER)
             border = BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(java.awt.Color.ORANGE, 1),
+                BorderFactory.createLineBorder(Color.ORANGE, 1),
                 BorderFactory.createEmptyBorder(8, 8, 8, 8)
             )
         }
@@ -196,47 +200,30 @@ class NewModuleDialog(
         })
     }
 
-    private fun loadPersistedValues() {
+    private val basePath: String get() = project.basePath.orEmpty()
+
+    private val properties: PropertiesComponent get() = PropertiesComponent.getInstance()
+
+    private val publicBuildGradle: String
+        get() = readFileContent("$basePath/devkit/public.gradle.kts")
+            ?: properties.getValue(PUBLIC_BUILD_GRADLE_KEY, getDefaultPublicBuildGradle())
+
+    private val implBuildGradle: String
+        get() = readFileContent("$basePath/devkit/impl.gradle.kts")
+            ?: properties.getValue(IMPL_BUILD_GRADLE_KEY, getDefaultImplBuildGradle())
+
+    private val testingBuildGradle: String
+        get() = readFileContent("$basePath/devkit/testing.gradle.kts")
+            ?: properties.getValue(TESTING_BUILD_GRADLE_KEY, getDefaultTestingBuildGradle())
+
+    private fun initialize() {
         val properties = PropertiesComponent.getInstance()
 
-        // Load package name (persisted)
         packageNameField.text = properties.getValue(PACKAGE_NAME_KEY, "com.example")
 
-        // Load build.gradle.kts templates from devkit files or use defaults
-        val projectBasePath = project.basePath ?: ""
-
-        // Try to load public build gradle from devkit/public.gradle.kts
-        val publicGradlePath = "$projectBasePath/devkit/public.gradle.kts"
-        val publicContent = readFileContent(publicGradlePath)
-        publicBuildGradleArea.text = if (publicContent != null) {
-            // Use devkit file content if it exists
-            publicContent
-        } else {
-            // Fall back to persisted value or default
-            properties.getValue(PUBLIC_BUILD_GRADLE_KEY, getDefaultPublicBuildGradle())
-        }
-
-        // Try to load impl build gradle from devkit/impl.gradle.kts
-        val implGradlePath = "$projectBasePath/devkit/impl.gradle.kts"
-        val implContent = readFileContent(implGradlePath)
-        implBuildGradleArea.text = if (implContent != null) {
-            // Use devkit file content if it exists
-            implContent
-        } else {
-            // Fall back to persisted value or default
-            properties.getValue(IMPL_BUILD_GRADLE_KEY, getDefaultImplBuildGradle())
-        }
-
-        // Try to load testing build gradle from devkit/testing.gradle.kts
-        val testingGradlePath = "$projectBasePath/devkit/testing.gradle.kts"
-        val testingContent = readFileContent(testingGradlePath)
-        testingBuildGradleArea.text = if (testingContent != null) {
-            // Use devkit file content if it exists
-            testingContent
-        } else {
-            // Fall back to persisted value or default
-            properties.getValue(TESTING_BUILD_GRADLE_KEY, getDefaultTestingBuildGradle())
-        }
+        publicBuildGradleArea.text = publicBuildGradle
+        implBuildGradleArea.text = implBuildGradle
+        testingBuildGradleArea.text = testingBuildGradle
 
         // Directory name is not persisted - starts empty each time
         directoryNameField.text = ""
@@ -273,22 +260,22 @@ class NewModuleDialog(
         }
 
         // Add document listeners to save templates as they're edited
-        publicBuildGradleArea.document.addDocumentListener(object : javax.swing.event.DocumentListener {
-            override fun insertUpdate(e: javax.swing.event.DocumentEvent?) = saveTemplates()
-            override fun removeUpdate(e: javax.swing.event.DocumentEvent?) = saveTemplates()
-            override fun changedUpdate(e: javax.swing.event.DocumentEvent?) = saveTemplates()
+        publicBuildGradleArea.document.addDocumentListener(object : DocumentListener {
+            override fun insertUpdate(e: DocumentEvent?) = saveTemplates()
+            override fun removeUpdate(e: DocumentEvent?) = saveTemplates()
+            override fun changedUpdate(e: DocumentEvent?) = saveTemplates()
         })
 
-        implBuildGradleArea.document.addDocumentListener(object : javax.swing.event.DocumentListener {
-            override fun insertUpdate(e: javax.swing.event.DocumentEvent?) = saveTemplates()
-            override fun removeUpdate(e: javax.swing.event.DocumentEvent?) = saveTemplates()
-            override fun changedUpdate(e: javax.swing.event.DocumentEvent?) = saveTemplates()
+        implBuildGradleArea.document.addDocumentListener(object : DocumentListener {
+            override fun insertUpdate(e: DocumentEvent?) = saveTemplates()
+            override fun removeUpdate(e: DocumentEvent?) = saveTemplates()
+            override fun changedUpdate(e: DocumentEvent?) = saveTemplates()
         })
 
-        testingBuildGradleArea.document.addDocumentListener(object : javax.swing.event.DocumentListener {
-            override fun insertUpdate(e: javax.swing.event.DocumentEvent?) = saveTemplates()
-            override fun removeUpdate(e: javax.swing.event.DocumentEvent?) = saveTemplates()
-            override fun changedUpdate(e: javax.swing.event.DocumentEvent?) = saveTemplates()
+        testingBuildGradleArea.document.addDocumentListener(object : DocumentListener {
+            override fun insertUpdate(e: DocumentEvent?) = saveTemplates()
+            override fun removeUpdate(e: DocumentEvent?) = saveTemplates()
+            override fun changedUpdate(e: DocumentEvent?) = saveTemplates()
         })
     }
 
@@ -327,37 +314,41 @@ class NewModuleDialog(
         // Calculate project directory path relative to project root
         val projectBasePath = project.basePath
         val parentPath = parentDirectory.path
-        val projectDirectory = if (projectBasePath != null && parentPath.startsWith(projectBasePath)) {
+        val publicDirectory = if (projectBasePath != null && parentPath.startsWith(projectBasePath)) {
             // Get relative path from project root, ensuring it starts with ":"
             val relativePath = parentPath.substring(projectBasePath.length)
-                .replace("/", ":")
-                .let { if (it.startsWith(":")) it else ":$it" }
-            relativePath
+                .replace("/", ".")
+                .let { if (it.startsWith(".")) it.substring(1) else it }
+            if (relativePath.isNotEmpty()) {
+                "projects.$relativePath.$directoryName.public"
+            } else {
+                "projects.$directoryName.public"
+            }
         } else {
             // Fallback if we can't determine relative path
-            ":${parentDirectory.name}"
+            "projects.${parentDirectory.name}.$directoryName.public"
         }
 
         // Replace placeholders in templates with actual values
         val processedPublicTemplate = if (publicModuleCheckBox.isSelected) {
-            publicBuildGradleArea.text
+            publicBuildGradle
                 .replace("\$directoryName", directoryName)
-                .replace("\$projectDirectory", projectDirectory)
+                .replace("\$projectDirectory", publicDirectory)
                 .replace("\$namespace", namespace)
         } else null
 
         val processedImplTemplate = if (implModuleCheckBox.isSelected) {
-            implBuildGradleArea.text
+            implBuildGradle
                 .replace("\$directoryName", directoryName)
-                .replace("\$projectDirectory", projectDirectory)
-                .replace("\$namespace", namespace)
+                .replace("\$projectDirectory", publicDirectory)
+                .replace("\$namespace", "$namespace.impl")
         } else null
 
         val processedTestingTemplate = if (testingModuleCheckBox.isSelected) {
-            testingBuildGradleArea.text
+            testingBuildGradle
                 .replace("\$directoryName", directoryName)
-                .replace("\$projectDirectory", projectDirectory)
-                .replace("\$namespace", namespace)
+                .replace("\$projectDirectory", publicDirectory)
+                .replace("\$namespace", "$namespace.testing")
         } else null
 
         val moduleCreator = ModuleCreator(

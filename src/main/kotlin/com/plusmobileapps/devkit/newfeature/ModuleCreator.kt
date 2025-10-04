@@ -66,7 +66,14 @@ class ModuleCreator(
         val srcDir = moduleDir.createChildDirectory(this, "src")
         val commonMainDir = srcDir.createChildDirectory(this, "commonMain")
         val kotlinDir = commonMainDir.createChildDirectory(this, "kotlin")
-        createNamespaceDirectories(kotlinDir, namespace)
+
+        // Create namespace directories with module-specific suffix for impl and testing
+        when (moduleName) {
+            PUBLIC_MODULE_NAME -> createNamespaceDirectories(kotlinDir, namespace)
+            IMPL_MODULE_NAME -> createNamespaceDirectories(kotlinDir, namespace, "impl")
+            TESTING_MODULE_NAME -> createNamespaceDirectories(kotlinDir, namespace, "testing")
+            else -> createNamespaceDirectories(kotlinDir, namespace)
+        }
 
         // Create build.gradle.kts file with custom template
         val buildGradleContent = when (moduleName) {
@@ -171,12 +178,16 @@ class ModuleCreator(
         """.trimIndent()
     }
 
-    private fun createNamespaceDirectories(parent: VirtualFile, namespace: String) {
+    private fun createNamespaceDirectories(parent: VirtualFile, namespace: String, suffix: String? = null) {
         var current = parent
         namespace.split('.').forEach { part ->
             current = current.createChildDirectory(this, part)
         }
-        // Removed the extra directoryName directory creation
+
+        // Add suffix directory for impl and testing modules
+        if (suffix != null) {
+            current = current.createChildDirectory(this, suffix)
+        }
     }
 
     private fun showNotification(content: String, type: NotificationType) {
@@ -231,10 +242,12 @@ class ModuleCreator(
             // Sort includes and create final content
             val sortedIncludes = allIncludes.sorted().joinToString("\n") { "include(\"$it\")" }
 
-            val updatedContent = if (contentWithoutIncludes.isBlank()) {
+            val updatedContent = if (contentWithoutIncludes.trim().isEmpty()) {
                 sortedIncludes
             } else {
-                "$contentWithoutIncludes\n\n$sortedIncludes"
+                // Only add one newline if the content doesn't already end with one
+                val separator = if (contentWithoutIncludes.endsWith("\n")) "\n" else "\n\n"
+                "$contentWithoutIncludes$separator$sortedIncludes"
             }
 
             settingsFile.setBinaryContent(updatedContent.toByteArray())
