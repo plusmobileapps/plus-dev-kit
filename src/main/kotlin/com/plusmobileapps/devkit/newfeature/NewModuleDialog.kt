@@ -317,14 +317,16 @@ class NewModuleDialog(
         val publicDirectory = if (projectBasePath != null && parentPath.startsWith(projectBasePath)) {
             // Get relative path from project root, ensuring it starts with ":"
             val relativePath = parentPath.substring(projectBasePath.length)
-                .replace("/", ":")
-                .let { if (it.startsWith(":")) it else ":$it" }
-            relativePath
+                .replace("/", ".")
+                .let { if (it.startsWith(".")) it.substring(1) else it }
+            if (relativePath.isNotEmpty()) {
+                "projects.$relativePath.$directoryName.public"
+            } else {
+                "projects.$directoryName.public"
+            }
         } else {
             // Fallback if we can't determine relative path
-            ":${parentDirectory.name}"
-        }.let {
-            "$it:$directoryName:public"
+            "projects.${parentDirectory.name}.$directoryName.public"
         }
 
         // Replace placeholders in templates with actual values
