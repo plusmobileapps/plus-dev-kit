@@ -231,10 +231,12 @@ class ModuleCreator(
             // Sort includes and create final content
             val sortedIncludes = allIncludes.sorted().joinToString("\n") { "include(\"$it\")" }
 
-            val updatedContent = if (contentWithoutIncludes.isBlank()) {
+            val updatedContent = if (contentWithoutIncludes.trim().isEmpty()) {
                 sortedIncludes
             } else {
-                "$contentWithoutIncludes\n\n$sortedIncludes"
+                // Only add one newline if the content doesn't already end with one
+                val separator = if (contentWithoutIncludes.endsWith("\n")) "\n" else "\n\n"
+                "$contentWithoutIncludes$separator$sortedIncludes"
             }
 
             settingsFile.setBinaryContent(updatedContent.toByteArray())
